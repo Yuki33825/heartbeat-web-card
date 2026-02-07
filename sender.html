@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Heartbeat Sender</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #0a0a0f;
+      color: #fff;
+      font-family: "Helvetica Neue", "Arial", sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      overflow: hidden;
+    }
+
+    /* --- Pulse Ring Container --- */
+    #pulse-container {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .pulse-ring {
+      position: absolute;
+      border: 2px solid rgba(255, 45, 85, 0.6);
+      border-radius: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      animation: expandRing 0.8s ease-out forwards;
+    }
+
+    @keyframes expandRing {
+      0% {
+        transform: translate(-50%, -50%) scale(0);
+        opacity: 0.8;
+      }
+      100% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 0;
+      }
+    }
+
+    /* --- Heart Icon --- */
+    #heart-icon {
+      font-size: 4rem;
+      color: #ff2d55;
+      transition: transform 0.15s ease;
+      line-height: 1;
+    }
+
+    #heart-icon.beat {
+      transform: scale(1.3);
+    }
+
+    /* --- Beat Count --- */
+    #beat-count {
+      font-size: 1.8rem;
+      font-weight: 200;
+      letter-spacing: 0.1em;
+      opacity: 0.4;
+      margin-top: 1.5rem;
+    }
+
+    /* --- Hint --- */
+    .hint {
+      font-size: 0.7rem;
+      letter-spacing: 0.1em;
+      opacity: 0.25;
+      margin-top: 2rem;
+    }
+  </style>
+</head>
+<body>
+  <div id="pulse-container"></div>
+  <div id="heart-icon">&#9829;</div>
+  <p id="beat-count">0</p>
+  <p class="hint">クリックして心拍を送信</p>
+  <script type="module" src="./sender.js"></script>
+</body>
+</html>
