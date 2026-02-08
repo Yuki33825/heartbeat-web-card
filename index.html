@@ -12,7 +12,7 @@
     }
 
     body {
-      background: #0a0a0f;
+      background: #000;
       color: #fff;
       font-family: "Helvetica Neue", "Arial", sans-serif;
       overflow: hidden;
@@ -21,7 +21,6 @@
       -webkit-tap-highlight-color: transparent;
       user-select: none;
       -webkit-user-select: none;
-      transition: background-color 0.5s ease;
     }
 
     /* --- Start Overlay --- */
@@ -29,7 +28,7 @@
       position: fixed;
       inset: 0;
       z-index: 100;
-      background: rgba(10, 10, 15, 0.97);
+      background: rgba(0, 0, 0, 0.97);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -58,12 +57,29 @@
       margin-top: 1.5rem;
     }
 
+    #start-overlay .volume-hint {
+      display: flex;
+      align-items: center;
+      gap: 0.5em;
+      font-size: 0.75rem;
+      letter-spacing: 0.08em;
+      opacity: 0.5;
+      margin-top: 2.5rem;
+      color: rgba(255, 45, 85, 0.8);
+    }
+
+    #start-overlay .volume-hint svg {
+      width: 1.2em;
+      height: 1.2em;
+      fill: currentColor;
+    }
+
     @keyframes breathe {
       0%, 100% { opacity: 0.5; }
       50% { opacity: 1; }
     }
 
-    /* --- Canvas --- */
+    /* --- Canvas (fluid simulation) --- */
     #viz-canvas {
       position: fixed;
       inset: 0;
@@ -72,7 +88,7 @@
       z-index: 0;
     }
 
-    /* --- Card Info --- */
+    /* --- Card Info (overlaid on fluid) --- */
     #card-info {
       position: relative;
       z-index: 10;
@@ -91,6 +107,7 @@
       font-weight: 200;
       letter-spacing: 0.3em;
       opacity: 0.9;
+      text-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
     }
 
     #name.pulse {
@@ -104,7 +121,7 @@
       }
       100% {
         opacity: 0.9;
-        text-shadow: none;
+        text-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
       }
     }
 
@@ -114,26 +131,7 @@
       text-transform: uppercase;
       opacity: 0.4;
       margin-top: 0.6rem;
-    }
-
-    /* --- ECG Line --- */
-    #heartbeat-line {
-      width: 85%;
-      max-width: 400px;
-      height: 60px;
-      margin: 2.5rem 0 1.5rem;
-    }
-
-    #ecg-line {
-      width: 100%;
-      height: 100%;
-    }
-
-    #ecg-path {
-      fill: none;
-      stroke: #ff2d55;
-      stroke-width: 1.5;
-      opacity: 0.7;
+      text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
     }
 
     /* --- Status --- */
@@ -141,6 +139,8 @@
       font-size: 0.65rem;
       letter-spacing: 0.15em;
       opacity: 0.3;
+      margin-top: 2rem;
+      text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
     }
 
     #status-text.connected {
@@ -154,6 +154,7 @@
       margin-top: 0.5rem;
       min-height: 1.2em;
       color: rgba(255, 45, 85, 0.95);
+      text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
     }
   </style>
 </head>
@@ -166,22 +167,21 @@
 
   <!-- Start Overlay -->
   <div id="start-overlay">
-    <p class="main-text">タップして体験を開始</p>
-    <p class="sub-text">音量を最大にすると心拍を感じられます</p>
+    <p class="main-text">画面に触れて、心臓と繋がる</p>
+    <p class="sub-text">あなたのスマホが、私の一部になる</p>
+    <p class="volume-hint">
+      <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0014 8.5v7a4.49 4.49 0 002.5-3.5zM14 3.23v2.06a7.007 7.007 0 010 13.42v2.06A9.013 9.013 0 0014 3.23z"/></svg>
+      音量を最大に
+    </p>
   </div>
 
-  <!-- Canvas Layer -->
+  <!-- Canvas Layer (WebGL fluid simulation) -->
   <canvas id="viz-canvas"></canvas>
 
   <!-- Card Info Layer -->
   <div id="card-info">
     <h1 id="name">菅原 幸宏</h1>
     <p id="tagline">proof of online existence</p>
-    <div id="heartbeat-line">
-      <svg id="ecg-line" viewBox="0 0 400 80" preserveAspectRatio="none">
-        <polyline id="ecg-path" />
-      </svg>
-    </div>
     <p id="status-text">接続中...</p>
     <p id="beat-number" class="beat-number" aria-live="polite"></p>
   </div>

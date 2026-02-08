@@ -16,19 +16,19 @@
 #include "MAX30100_PulseOximeter.h"
 
 // --- iPhone テザリング用 ---
-#define WIFI_SSID     "YukiPhone"      // iPhoneの名前（設定→一般→情報）
-#define WIFI_PASSWORD "yukihiro825"    // インターネット共有のパスワード
+#define WIFI_SSID     "SPWH_L13_BFDBE0"      // iPhoneの名前（設定→一般→情報）
+#define WIFI_PASSWORD "5nU22tVn"    // インターネット共有のパスワード
 #define WIFI_CONNECT_TIMEOUT_MS  20000
 #define DATABASE_URL  "https://dentsu-internship-art-demo-default-rtdb.asia-southeast1.firebasedatabase.app"
 // iPhone: 「互換性を最大に」をON（2.4GHz）。非公開ネットワークはスキャンに出ないがSSID指定で接続は試行される
 
 // 同一WiFi内のラグ削減（テザリング時: MacのIPは172.20.10.x）
-#define USE_RELAY     1
+#define USE_RELAY     0
 #define RELAY_HOST    "172.20.10.5"    // テザリングで接続したMacのIP（変更時はMacでifconfig確認）
 #define RELAY_PORT    8765
 
 #define BEAT_QUEUE_SIZE  32
-#define HTTP_TIMEOUT_MS  1000
+#define HTTP_TIMEOUT_MS  800
 #define RELAY_TIMEOUT_MS 500   // Relay未接続時に早くあきらめてFirebaseへ
 
 typedef struct {
@@ -99,6 +99,9 @@ void onBeatDetected() {
 }
 
 void firebaseTask(void *pvParameters) {
+  HTTPClient http;
+  http.setReuse(true);  // TCP keep-alive でTLS再ネゴシエーション省略
+
   while (true) {
     if (beatQueueEmpty()) {
       ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(10));
@@ -113,22 +116,6 @@ void firebaseTask(void *pvParameters) {
     }
     if (!beatQueuePop(&ts, &count)) continue;
 
-#if USE_RELAY
-    {
-      HTTPClient http;
-      String relayUrl = "http://" + String(RELAY_HOST) + ":" + String(RELAY_PORT) + "/beat";
-      http.begin(relayUrl);
-      http.setConnectTimeout(RELAY_TIMEOUT_MS);
-      http.setTimeout(RELAY_TIMEOUT_MS);
-      http.addHeader("Content-Type", "application/json");
-      String body = "{\"ts\":" + String(ts) + ",\"count\":" + String(count) + "}";
-      int code = http.POST(body);
-      Serial.printf("    Relay: %d (#%d)\n", code, count);
-      http.end();
-    }
-#endif
-
-    HTTPClient http;
     http.begin(String(DATABASE_URL) + "/live/beat_timestamp.json");
     http.setConnectTimeout(HTTP_TIMEOUT_MS);
     http.setTimeout(HTTP_TIMEOUT_MS);
@@ -136,7 +123,7 @@ void firebaseTask(void *pvParameters) {
     String fbBody = "{\"ts\":" + String(ts) + ",\"count\":" + String(count) + "}";
     int code = http.PUT(fbBody);
     Serial.printf("    Firebase: %d (#%d)\n", code, count);
-    http.end();
+    // http.end() を呼ばない → keep-alive維持
   }
 }
 
