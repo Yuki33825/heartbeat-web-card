@@ -5,39 +5,59 @@ import { firebaseConfig } from "./firebaseConfig.js";
 // --- Firebase ---
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-const heartbeatRef = ref(db, "live/heartbeat");
-let isFirstLoad = true;
+const beatRef = ref(db, "live/beat_timestamp");
+
+let isFirstBeatLoad = true;
 
 // --- DOM ---
 const overlay = document.getElementById("start-overlay");
 const nameEl = document.getElementById("name");
 const statusText = document.getElementById("status-text");
+const beatNumberEl = document.getElementById("beat-number");
 const canvas = document.getElementById("viz-canvas");
 const ctx2d = canvas.getContext("2d");
 const ecgPath = document.getElementById("ecg-path");
 
 // ============================================================
+// Universal Haptics
+// ============================================================
+function triggerHaptic(duration) {
+  if (duration === undefined) duration = 60;
+  // Android / Chrome - より強力なパターン
+  if (typeof navigator.vibrate === "function") {
+    navigator.vibrate([100, 50, 100]); // 2回パルス
+  }
+  // iOS 18+ Switch Hack — checked をトグルして label.click()
+  var sw = document.getElementById("haptic-switch");
+  var label = document.getElementById("haptic-label-bridge");
+  if (sw && label) {
+    sw.checked = !sw.checked;
+    label.click();
+  }
+}
+
+// ============================================================
 // WebAudio Vibration Engine
 // ============================================================
-let audioCtx = null;
+var audioCtx = null;
 
 function ensureAudioContext() {
   if (audioCtx) return audioCtx;
-  const Ctx = window.AudioContext || window.webkitAudioContext;
+  var Ctx = window.AudioContext || window.webkitAudioContext;
   if (!Ctx) return null;
   audioCtx = new Ctx({ sampleRate: 44100 });
   return audioCtx;
 }
 
 function unlockAudio() {
-  const ctx = ensureAudioContext();
+  var ctx = ensureAudioContext();
   if (ctx && ctx.state === "suspended") ctx.resume();
 }
 
 function playHeartbeatHaptic() {
-  const ctx = audioCtx;
+  var ctx = audioCtx;
   if (!ctx || ctx.state !== "running") return;
-  const now = ctx.currentTime;
+  var now = ctx.currentTime;
 
   // 第1拍 "lub" (強い方)
   playImpulse(now, 0.12, [30, 45, 55], 0.95);
@@ -46,7 +66,7 @@ function playHeartbeatHaptic() {
 }
 
 function playImpulse(startTime, duration, frequencies, peakGain) {
-  const ctx = audioCtx;
+  var ctx = audioCtx;
 
   var masterGain = ctx.createGain();
   masterGain.connect(ctx.destination);
@@ -232,13 +252,15 @@ function animationLoop() {
 // ============================================================
 // Heartbeat Handler
 // ============================================================
-function onHeartbeat() {
-  // 1. WebAudio haptic
-  playHeartbeatHaptic();
-  // 2. Android vibration (if supported)
-  if (navigator.vibrate) {
-    navigator.vibrate([100, 50, 80]);
+function onHeartbeat(beatCount) {
+  // どの心拍でビジュアルが動いたか表示（シリアル #88 と対応）
+  if (beatNumberEl) {
+    beatNumberEl.textContent = beatCount != null ? "Heart Beat! #" + beatCount : "";
   }
+  // 1. Universal haptics (Android vibrate + iOS 18 switch hack)
+  triggerHaptic(60);
+  // 2. WebAudio heartbeat sound
+  playHeartbeatHaptic();
   // 3. ECG spike
   addEcgSpike();
   // 4. Particle burst
@@ -261,12 +283,62 @@ overlay.addEventListener("click", function () {
 }, { once: true });
 
 // ============================================================
-// Firebase Listener
+// ローカル中継 (WebSocket) — 同一WiFiでラグ削減
 // ============================================================
-onValue(heartbeatRef, function () {
-  if (isFirstLoad) {
-    isFirstLoad = false;
+var relayWs = null;
+var relayConnected = false;
+var RELAY_PORT = 8765;
+
+function connectRelay() {
+  var scheme = location.protocol === "https:" ? "wss:" : "ws:";
+  var url = scheme + "//" + location.hostname + ":" + RELAY_PORT;
+  try {
+    relayWs = new WebSocket(url);
+    relayWs.onopen = function () {
+      relayConnected = true;
+      console.log("[relay] WebSocket 接続済み — 低遅延モード");
+    };
+    relayWs.onclose = function () {
+      relayConnected = false;
+      relayWs = null;
+      console.log("[relay] WebSocket 切断");
+      setTimeout(connectRelay, 3000);
+    };
+    relayWs.onerror = function () {
+      relayConnected = false;
+    };
+    relayWs.onmessage = function (e) {
+      try {
+        var data = JSON.parse(e.data);
+        if (data.ts != null) {
+          if (isFirstBeatLoad) {
+            isFirstBeatLoad = false;
+            return;
+          }
+          onHeartbeat(data.count != null ? data.count : null);
+        }
+      } catch (err) {}
+    };
+  } catch (e) {
+    setTimeout(connectRelay, 3000);
+  }
+}
+connectRelay();
+
+// ============================================================
+// Firebase Listeners（中継未接続時のみ使用）
+// ============================================================
+
+// /live/beat_timestamp — 心拍検知（M5Stack は { ts, count }、sender は数値のみ）
+onValue(beatRef, function (snapshot) {
+  if (relayConnected) return;
+  var v = snapshot.val();
+  console.log("Firebase beat received:", v);
+  if (isFirstBeatLoad) {
+    isFirstBeatLoad = false;
     return;
   }
-  onHeartbeat();
+  var count = v && typeof v === "object" && v.count != null ? v.count : null;
+  onHeartbeat(count);
 });
+

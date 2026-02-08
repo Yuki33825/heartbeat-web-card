@@ -146,9 +146,24 @@
     #status-text.connected {
       opacity: 0.5;
     }
+
+    .beat-number {
+      font-size: 0.85rem;
+      letter-spacing: 0.1em;
+      opacity: 0.7;
+      margin-top: 0.5rem;
+      min-height: 1.2em;
+      color: rgba(255, 45, 85, 0.95);
+    }
   </style>
 </head>
 <body>
+  <!-- iOS 18 Switch Hack (Taptic Engine) -->
+  <div style="position: fixed; top: -9999px; left: -9999px; opacity: 0; pointer-events: none;" aria-hidden="true">
+    <input type="checkbox" switch id="haptic-switch">
+    <label for="haptic-switch" id="haptic-label-bridge"></label>
+  </div>
+
   <!-- Start Overlay -->
   <div id="start-overlay">
     <p class="main-text">タップして体験を開始</p>
@@ -168,6 +183,7 @@
       </svg>
     </div>
     <p id="status-text">接続中...</p>
+    <p id="beat-number" class="beat-number" aria-live="polite"></p>
   </div>
 
   <script type="module" src="./index.js"></script>

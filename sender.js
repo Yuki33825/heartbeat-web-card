@@ -1,10 +1,10 @@
 import { initializeApp } from "firebase/app";
-import { getDatabase, ref, set } from "firebase/database";
+import { getDatabase, ref, set, serverTimestamp } from "firebase/database";
 import { firebaseConfig } from "./firebaseConfig.js";
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-const heartbeatRef = ref(db, "live/heartbeat");
+const beatRef = ref(db, "live/beat_timestamp");
 
 var heartIcon = document.getElementById("heart-icon");
 var beatCountEl = document.getElementById("beat-count");
@@ -25,7 +25,7 @@ function spawnPulseRing(x, y) {
 }
 
 document.body.addEventListener("click", function (e) {
-  set(heartbeatRef, { timestamp: Date.now() })
+  set(beatRef, serverTimestamp())
     .then(function () {
       // Heart beat animation
       heartIcon.classList.add("beat");
